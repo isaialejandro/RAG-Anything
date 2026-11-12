@@ -94,7 +94,8 @@ def _mineru_python_note() -> str:
         "MinerU 3.x supports Python 3.10 to 3.13 only, so RAG-Anything does "
         f"not install MinerU on Python {sys.version_info[0]}.{sys.version_info[1]}. "
         "To use the MinerU parser, run RAG-Anything on Python 3.13 or earlier; "
-        "on this Python, use the Docling parser instead (pip install docling, "
+        "on this Python, use the Docling parser instead "
+        "(pip install 'raganything[docling]', "
         'then RAGAnythingConfig(parser="docling")).'
     )
 
@@ -348,7 +349,8 @@ def html_requires_docling_error(file_path: Union[str, Path]) -> ValueError:
     """Build the error raised when HTML reaches a parser without parse_html."""
     return ValueError(
         f"HTML input ({Path(file_path).name}) requires a parser with native "
-        "HTML support (parse_html), such as Docling (pip install docling): "
+        "HTML support (parse_html), such as Docling "
+        "(pip install 'raganything[docling]'): "
         "select it with RAGAnythingConfig(parser='docling') or the "
         "PARSER=docling environment variable (CLI: --parser docling). HTML is "
         "not converted to PDF with LibreOffice, because that conversion "
@@ -2758,7 +2760,7 @@ class DoclingParser(Parser):
         except ImportError as e:
             raise RuntimeError(
                 "Docling Python API is not available. Install it with: "
-                "pip install docling"
+                "pip install 'raganything[docling]'"
             ) from e
 
         try:
@@ -3100,7 +3102,7 @@ class DoclingParser(Parser):
         except ImportError:
             self.logger.debug(
                 "Docling Python package is not installed. "
-                "Install it with: pip install docling"
+                "Install it with: pip install 'raganything[docling]'"
             )
             return False
 
