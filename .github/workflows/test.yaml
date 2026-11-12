@@ -13,7 +13,7 @@ jobs:
         runs-on: ubuntu-latest
         strategy:
             matrix:
-                python-version: ['3.10', '3.11', '3.12']
+                python-version: ['3.10', '3.11', '3.12', '3.13', '3.14']
 
         steps:
             - name: Checkout code
@@ -29,6 +29,22 @@ jobs:
                 python -m pip install --upgrade pip
                 pip install -e ".[all]"
                 pip install pytest pytest-asyncio
+
+            # MinerU is unavailable on Python 3.14, so `[all]` must still leave
+            # a usable parser there. Fail loudly rather than at ingest time.
+            - name: Verify a parser is installed
+              run: |
+                python - <<'PY'
+                import importlib.util, sys
+                available = [
+                    name
+                    for name in ("docling", "mineru")
+                    if importlib.util.find_spec(name) is not None
+                ]
+                print(f"python {sys.version_info.major}.{sys.version_info.minor}: {available}")
+                if not available:
+                    sys.exit("no parser installed by the [all] extra")
+                PY
 
             - name: Run tests
               run: pytest tests/ -v
