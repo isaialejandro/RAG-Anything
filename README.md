@@ -239,7 +239,9 @@ The hybrid retrieval system combines vector similarity search with graph travers
 
 ### Installation
 
-> **Python version:** RAG-Anything supports Python 3.10 and later, but its default MinerU parser needs MinerU 3.x, which supports Python 3.10 to 3.13 only. On Python 3.14, RAG-Anything is installed without MinerU: use the Docling parser there (`pip install docling`, then `RAGAnythingConfig(parser="docling")`), or create the environment with Python 3.13 to use MinerU.
+> **Python version:** RAG-Anything supports Python 3.10 and later, but its default MinerU parser needs MinerU 3.x, which supports Python 3.10 to 3.13 only. On Python 3.14, RAG-Anything is installed without MinerU: use the Docling parser there (`pip install 'raganything[docling]'`, then `RAGAnythingConfig(parser="docling")`), or create the environment with Python 3.13 to use MinerU.
+>
+> **Intel macOS:** prefer `raganything[docling]` over a bare `pip install docling`. The full Docling distribution depends on `docling-ibm-models`, which requires PyTorch, and PyTorch publishes no macOS x86_64 wheel after 2.2.2 — so a bare install cannot resolve there on any Python version. The extra selects `docling-slim` on that platform, which exposes the same `DocumentConverter` API without the TableFormer layout models (expect lower fidelity on complex tables).
 
 #### Option 1: Install from PyPI (Recommended)
 
@@ -248,7 +250,8 @@ The hybrid retrieval system combines vector similarity search with graph travers
 pip install raganything
 
 # With optional dependencies for extended format support:
-pip install 'raganything[all]'              # All optional features (Docling not included)
+pip install 'raganything[all]'              # All optional features (Docling included)
+pip install 'raganything[docling]'          # Docling parser only (required on Python 3.14)
 pip install 'raganything[image]'            # Image format conversion (BMP, TIFF, GIF, WebP)
 pip install 'raganything[text]'             # Text file processing (TXT, MD)
 pip install 'raganything[image,text]'       # Multiple features
@@ -1161,11 +1164,13 @@ RAGAnything now supports multiple parsers, each with specific advantages:
 - Better document structure preservation
 - Native support for multiple Office formats
 
-Install Docling (not included in `raganything[all]`):
+Install Docling (also included in `raganything[all]`):
 
 ```bash
-pip install docling
+pip install 'raganything[docling]'
 ```
+
+The extra resolves to `docling-slim` on Intel macOS, where the full distribution cannot be installed, and to `docling` everywhere else.
 
 #### PaddleOCR Parser
 - OCR-focused parser for images and PDFs
@@ -1264,7 +1269,7 @@ Different content types require specific optional dependencies:
 - **Text Files** (.txt, .md): Install with `pip install raganything[text]`. Parsed directly (no PDF/OCR round trip); markdown image references (`![alt](path)`) that point to local image files (an image extension and image file contents) become image blocks and flow through the same multimodal pipeline as images extracted from PDFs — URLs, missing files and other files stay as plain text. Referenced images are sent to the configured vision model wherever they are on disk, so only ingest Markdown whose image references you trust
 - **PaddleOCR Parser** (`parser="paddleocr"`): Install with `pip install raganything[paddleocr]`, then install `paddlepaddle` for your platform
 
-> **📋 Quick Install**: Use `pip install raganything[all]` to enable all format support (Python dependencies only - LibreOffice still needs separate installation, and HTML needs Docling: `pip install docling`)
+> **📋 Quick Install**: Use `pip install raganything[all]` to enable all format support (Python dependencies only - LibreOffice still needs separate installation). HTML needs Docling, which `[all]` now installs; to add it alone, use `pip install 'raganything[docling]'`.
 
 ---
 
@@ -1276,7 +1281,7 @@ Different content types require specific optional dependencies:
 - **Office Documents** - DOC, DOCX, PPT, PPTX, XLS, XLSX
 - **Images** - JPG, PNG, BMP, TIFF, GIF, WebP
 - **Text Files** - TXT, MD
-- **HTML** - HTML, HTM, XHTML (Docling parser only: install it with `pip install docling` and select it with `RAGAnythingConfig(parser="docling")` or `PARSER=docling`). MinerU and PaddleOCR raise an error for these files instead of converting them to PDF with LibreOffice, because that conversion fetches remote URLs and embeds local files referenced by the page. HTML is recognised by file extension: HTML content saved under an Office extension (for example `.doc` or `.xls`) is still converted by LibreOffice
+- **HTML** - HTML, HTM, XHTML (Docling parser only: install it with `pip install 'raganything[docling]'` and select it with `RAGAnythingConfig(parser="docling")` or `PARSER=docling`). MinerU and PaddleOCR raise an error for these files instead of converting them to PDF with LibreOffice, because that conversion fetches remote URLs and embeds local files referenced by the page. HTML is recognised by file extension: HTML content saved under an Office extension (for example `.doc` or `.xls`) is still converted by LibreOffice
 
 ### Multimodal Elements
 

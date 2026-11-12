@@ -229,7 +229,9 @@
 
 ### 安装
 
-> **Python 版本：** RAG-Anything 支持 Python 3.10 及以上版本，但默认的 MinerU 解析器依赖 MinerU 3.x，而 MinerU 3.x 仅支持 Python 3.10 至 3.13。在 Python 3.14 上安装 RAG-Anything 时不会安装 MinerU：请改用 Docling 解析器（`pip install docling`，然后设置 `RAGAnythingConfig(parser="docling")`），或使用 Python 3.13 创建环境以使用 MinerU。
+> **Python 版本：** RAG-Anything 支持 Python 3.10 及以上版本，但默认的 MinerU 解析器依赖 MinerU 3.x，而 MinerU 3.x 仅支持 Python 3.10 至 3.13。在 Python 3.14 上安装 RAG-Anything 时不会安装 MinerU：请改用 Docling 解析器（`pip install 'raganything[docling]'`，然后设置 `RAGAnythingConfig(parser="docling")`），或使用 Python 3.13 创建环境以使用 MinerU。
+>
+> **Intel macOS：** 请使用 `raganything[docling]` 而非直接 `pip install docling`。完整的 Docling 依赖 `docling-ibm-models`，后者需要 PyTorch，而 PyTorch 在 2.2.2 之后不再发布 macOS x86_64 wheel，因此在该平台上直接安装无法完成解析。该 extra 会选择 `docling-slim`，它提供相同的 `DocumentConverter` API，但不含 TableFormer 版面模型（复杂表格的还原度会下降）。
 
 #### 选项1：从PyPI安装（推荐）
 
@@ -238,7 +240,8 @@
 pip install raganything
 
 # 安装包含扩展格式支持的可选依赖：
-pip install 'raganything[all]'              # 所有可选功能（不含 Docling）
+pip install 'raganything[all]'              # 所有可选功能（含 Docling）
+pip install 'raganything[docling]'          # 仅 Docling 解析器（Python 3.14 必需）
 pip install 'raganything[image]'            # 图像格式转换 (BMP, TIFF, GIF, WebP)
 pip install 'raganything[text]'             # 文本文件处理 (TXT, MD)
 pip install 'raganything[image,text]'       # 多个功能组合
@@ -1115,11 +1118,13 @@ RAGAnything 现在支持多种解析器，每种解析器都有其特定的优�
 - 更好的文档结构保持
 - 原生支持多种Office格式
 
-安装 Docling（不包含在 `raganything[all]` 中）：
+安装 Docling（也包含在 `raganything[all]` 中）：
 
 ```bash
-pip install docling
+pip install 'raganything[docling]'
 ```
+
+在 Intel macOS 上该 extra 会解析为 `docling-slim`（完整发行版在该平台无法安装），在其他平台解析为 `docling`。
 
 ### MinerU配置
 
@@ -1202,7 +1207,7 @@ MinerU 将 v2 标记为持续演进的输出 schema。RAG-Anything 会记录并�
 - **视频** (.mp4, .mov, .webm, .avi, .mkv): 使用 `pip install raganything[video]` 安装（另需系统 ffmpeg），并设置 `enable_video_processing=True`（环境变量 `ENABLE_VIDEO_PROCESSING`）；双通道处理：SceneDetect 场景切分 + 关键帧 VLM 描述 + 音轨转写，按时间戳合并。媒体文件可以直接传给 `process_document_complete()` / 文件夹批处理，也可以作为 content list 项插入
 - **文本文件** (.txt, .md): 使用 `pip install raganything[text]` 安装。直接解析，不再经过 PDF/OCR 中转；markdown 中指向本地图片文件（扩展名为图片格式且文件内容确为图片）的引用（`![alt](path)`）会生成图像块，与 PDF 中提取的图片走同一条多模态管线——URL、不存在的文件和其他文件保持为纯文本。被引用的图片无论位于磁盘何处都会发送给配置的视觉模型，因此只摄入图片引用可信的 Markdown
 
-> **📋 快速安装**: 使用 `pip install raganything[all]` 启用所有格式支持（仅Python依赖 - LibreOffice仍需单独安装，HTML需要Docling：`pip install docling`）
+> **📋 快速安装**: 使用 `pip install raganything[all]` 启用所有格式支持（仅Python依赖 - LibreOffice仍需单独安装）。HTML 需要 Docling，`[all]` 现已包含；若只需单独安装，使用 `pip install 'raganything[docling]'`。
 
 ---
 
@@ -1214,7 +1219,7 @@ MinerU 将 v2 标记为持续演进的输出 schema。RAG-Anything 会记录并�
 - **Office文档** - DOC、DOCX、PPT、PPTX、XLS、XLSX
 - **图像** - JPG、PNG、BMP、TIFF、GIF、WebP
 - **文本文件** - TXT、MD
-- **HTML** - HTML、HTM、XHTML（仅 Docling 解析器：使用 `pip install docling` 安装，并通过 `RAGAnythingConfig(parser="docling")` 或 `PARSER=docling` 选择）。MinerU 和 PaddleOCR 遇到这些文件会直接报错，而不是用 LibreOffice 转成 PDF，因为该转换会请求网页引用的远程 URL 并嵌入其引用的本地文件。HTML 按文件扩展名识别：以 Office 扩展名（如 `.doc`、`.xls`）保存的 HTML 内容仍会交给 LibreOffice 转换
+- **HTML** - HTML、HTM、XHTML（仅 Docling 解析器：使用 `pip install 'raganything[docling]'` 安装，并通过 `RAGAnythingConfig(parser="docling")` 或 `PARSER=docling` 选择）。MinerU 和 PaddleOCR 遇到这些文件会直接报错，而不是用 LibreOffice 转成 PDF，因为该转换会请求网页引用的远程 URL 并嵌入其引用的本地文件。HTML 按文件扩展名识别：以 Office 扩展名（如 `.doc`、`.xls`）保存的 HTML 内容仍会交给 LibreOffice 转换
 
 ### 多模态元素
 

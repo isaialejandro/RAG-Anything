@@ -29,8 +29,8 @@ pip install tqdm
 # Optional for parser='paddleocr'
 pip install raganything[paddleocr]
 
-# Optional for parser='docling' (required for HTML files)
-pip install docling
+# Optional for parser='docling' (required for HTML files, and the only parser on Python 3.14)
+pip install raganything[docling]
 ```
 
 ## Usage
