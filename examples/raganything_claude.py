@@ -255,7 +255,10 @@ embedding_func = EmbeddingFunc(
 
 
 async def run(
-    file_path: str, output_dir: str = "./output", working_dir: str = "./rag_storage"
+    file_path: str,
+    output_dir: str = "./output",
+    working_dir: str = "./rag_storage",
+    queries: list[str] | None = None,
 ):
     config = RAGAnythingConfig(
         working_dir=working_dir,
@@ -278,7 +281,7 @@ async def run(
     logger.info(f"Processing: {file_path}")
     await rag.process_document_complete(file_path=file_path, output_dir=output_dir)
 
-    queries = [
+    queries = queries or [
         "What is the main content of the document?",
         "What are the key topics discussed?",
     ]
@@ -299,8 +302,15 @@ if __name__ == "__main__":
     parser.add_argument("file_path", help="Path to the document to process")
     parser.add_argument("--output", "-o", default=os.getenv("OUTPUT_DIR", "./output"))
     parser.add_argument("--working-dir", "-w", default="./rag_storage")
+    parser.add_argument(
+        "--query",
+        "-q",
+        action="append",
+        help="Ask a specific question (repeatable). "
+        "Defaults to two generic queries when omitted.",
+    )
     args = parser.parse_args()
 
     print("RAGAnything — Claude LLM with Ollama embeddings")
     print("=" * 40)
-    asyncio.run(run(args.file_path, args.output, args.working_dir))
+    asyncio.run(run(args.file_path, args.output, args.working_dir, args.query))
