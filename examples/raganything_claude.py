@@ -28,7 +28,6 @@ sys.path.append(str(Path(__file__).parent.parent))
 from anthropic import AsyncAnthropic
 from dotenv import load_dotenv
 
-from lightrag.llm.anthropic import anthropic_complete_if_cache
 from lightrag.llm.ollama import ollama_embed
 from lightrag.utils import EmbeddingFunc, logger, set_verbose_debug
 from raganything import RAGAnything, RAGAnythingConfig
@@ -42,6 +41,11 @@ OLLAMA_EMBED_MODEL = os.getenv("EMBEDDING_MODEL", "bge-m3:latest")
 
 LLM_MODEL = os.getenv("LLM_MODEL", "claude-sonnet-4-5")
 VISION_MODEL = os.getenv("VISION_MODEL", "claude-sonnet-4-5")
+
+# Anthropic's Messages API requires max_tokens, and LightRAG's Anthropic wrapper
+# does not default it — without this, entity extraction fails with
+# "Missing required arguments; Expected ... 'max_tokens' ...".
+MAX_TOKENS = int(os.getenv("MAX_TOKENS", "4096"))
 
 # MinerU requires Python 3.10-3.13. Default to docling on Python 3.14+.
 import sys as _sys
@@ -93,15 +97,37 @@ def configure_logging():
 
 
 def llm_model_func(prompt, system_prompt=None, history_messages=[], **kwargs):
-    """Text LLM — routes to Claude via LightRAG's Anthropic wrapper."""
-    return anthropic_complete_if_cache(
-        LLM_MODEL,
-        prompt,
-        system_prompt=system_prompt,
-        history_messages=history_messages,
-        api_key=ANTHROPIC_API_KEY,
-        **kwargs,
-    )
+    """
+    Text LLM — a direct, non-streaming Claude call that returns a string.
+
+    LightRAG's bundled Anthropic wrapper always streams and returns an async
+    generator, but entity extraction (and the default query path) expect a
+    plain string, so the SDK is called directly here. Returns a coroutine for
+    LightRAG to await. Unrecognised kwargs (LightRAG internals like hashing_kv)
+    are ignored rather than forwarded to the API.
+    """
+    max_tokens = kwargs.pop("max_tokens", MAX_TOKENS)
+    messages = list(history_messages or []) + [{"role": "user", "content": prompt}]
+
+    async def _run():
+        client = AsyncAnthropic(api_key=ANTHROPIC_API_KEY)
+        params = {
+            "model": LLM_MODEL,
+            "max_tokens": max_tokens,
+            "messages": messages,
+        }
+        if system_prompt:
+            params["system"] = system_prompt
+        # Stream and collect into a string: the SDK refuses a non-streaming
+        # request whose max_tokens could take over 10 minutes, and entity
+        # extraction uses a large max_tokens. Streaming returns the same text.
+        parts = []
+        async with client.messages.stream(**params) as stream:
+            async for text in stream.text_stream:
+                parts.append(text)
+        return "".join(parts)
+
+    return _run()
 
 
 async def _claude_vision(prompt, system_prompt=None, image_data=None, **kwargs):
