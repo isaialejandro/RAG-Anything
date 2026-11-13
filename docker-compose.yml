@@ -1,0 +1,33 @@
+services:
+  rag:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: raganything:py314
+    # Secrets and endpoints come from the host .env at runtime — never baked
+    # into the image. Requires ANTHROPIC_API_KEY plus the EMBEDDING_* block.
+    env_file:
+      - .env
+    environment:
+      # Force the Docling parser regardless of what .env carries: this image
+      # has torch, so the full layout+table pipeline is available here.
+      PARSER: docling
+      # Safe defaults if .env omits them; .env still wins for the host/model.
+      EMBEDDING_BINDING: ollama
+      EMBEDDING_BINDING_HOST: ${EMBEDDING_BINDING_HOST:-http://10.0.0.111:11434}
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-bge-m3:latest}
+      EMBEDDING_DIM: ${EMBEDDING_DIM:-1024}
+    volumes:
+      # Put input documents under ./data on the host, reference them as
+      # /data/<file> in the run command.
+      - ./data:/data:ro
+      # Persist the knowledge graph / vector store and parser output.
+      - ./rag_storage:/app/rag_storage
+      - ./output:/app/output
+      # Persist Docling's downloaded models across container runs.
+      - docling-models:/models
+    # One-shot runner: `docker compose run --rm rag /data/mydoc.pdf`.
+    # No long-running server, so there is nothing to restart.
+
+volumes:
+  docling-models:

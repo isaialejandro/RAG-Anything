@@ -17,7 +17,11 @@ def test_enhanced_markdown_converter_loads_configured_css_file(tmp_path, monkeyp
         lambda self: {},
     )
     monkeypatch.setattr(enhanced_markdown, "MARKDOWN_AVAILABLE", True)
-    monkeypatch.setattr(enhanced_markdown, "markdown", FakeMarkdownModule)
+    # raising=False: the module only binds `markdown` when the optional
+    # dependency imports, and this test supplies its own fake either way.
+    monkeypatch.setattr(
+        enhanced_markdown, "markdown", FakeMarkdownModule, raising=False
+    )
 
     css_file = tmp_path / "custom.css"
     css_content = "body { color: rgb(1, 2, 3); }"

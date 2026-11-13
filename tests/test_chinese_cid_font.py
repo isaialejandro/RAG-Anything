@@ -11,6 +11,10 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+# reportlab ships in the optional `text` extra; these tests register real
+# CID fonts through it, so there is nothing to assert without it.
+pytest.importorskip("reportlab")
+
 
 class TestChineseCIDFont:
     """Test CID font registration for Chinese text rendering."""

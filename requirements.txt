@@ -19,7 +19,13 @@ tqdm
 # - [image]: Pillow>=10.0.0 (for BMP, TIFF, GIF, WebP format conversion)
 # - [text]: reportlab>=4.0.0 (for TXT, MD to PDF conversion)
 # - [paddleocr]: paddleocr + pypdfium2 (for parser='paddleocr' - better OCR for scanned PDFs)
+#                paddleocr is skipped on Python 3.14: paddlepaddle has no cp314 wheel.
 # - [office]: requires LibreOffice (external program, not Python package)
+# - [docling]: the Docling parser, which is the only parser available on Python 3.14.
+#              Resolves to docling-slim on Intel macOS, where docling-ibm-models
+#              cannot be installed (it needs torch, and PyTorch publishes no macOS
+#              x86_64 wheel after 2.2.2). docling-slim provides the same
+#              DocumentConverter API minus the TableFormer layout models.
 # - [all]: includes all optional dependencies
 #
 # Install with: pip install raganything[image,text] or pip install raganything[all]

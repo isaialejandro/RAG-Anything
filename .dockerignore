@@ -1,0 +1,32 @@
+# Virtualenvs and caches
+.venv/
+venv/
+env/
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Secrets — never bake into the image; injected at runtime via env_file
+.env
+*.env
+!.env.example
+!reproduce/env.example
+
+# Runtime data and outputs
+rag_storage/
+output/
+data/
+*.log
+
+# VCS and local state
+.git/
+.gitignore
+harness/state/
+
+# Docs build artifacts
+*.egg-info/
+build/
+dist/

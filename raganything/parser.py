@@ -94,7 +94,8 @@ def _mineru_python_note() -> str:
         "MinerU 3.x supports Python 3.10 to 3.13 only, so RAG-Anything does "
         f"not install MinerU on Python {sys.version_info[0]}.{sys.version_info[1]}. "
         "To use the MinerU parser, run RAG-Anything on Python 3.13 or earlier; "
-        "on this Python, use the Docling parser instead (pip install docling, "
+        "on this Python, use the Docling parser instead "
+        "(pip install 'raganything[docling]', "
         'then RAGAnythingConfig(parser="docling")).'
     )
 
@@ -348,7 +349,8 @@ def html_requires_docling_error(file_path: Union[str, Path]) -> ValueError:
     """Build the error raised when HTML reaches a parser without parse_html."""
     return ValueError(
         f"HTML input ({Path(file_path).name}) requires a parser with native "
-        "HTML support (parse_html), such as Docling (pip install docling): "
+        "HTML support (parse_html), such as Docling "
+        "(pip install 'raganything[docling]'): "
         "select it with RAGAnythingConfig(parser='docling') or the "
         "PARSER=docling environment variable (CLI: --parser docling). HTML is "
         "not converted to PDF with LibreOffice, because that conversion "
@@ -2627,6 +2629,30 @@ class DoclingParser(Parser):
                         f"Failed to remove temporary file {downloaded_temp_file}: {e}"
                     )
 
+    @staticmethod
+    def _docling_model_availability() -> Dict[str, bool]:
+        """
+        Report which optional Docling components are importable in this
+        environment.
+
+        Docling's full distribution pulls torch-backed ML models; the
+        ``docling-slim`` build and torch-less platforms (e.g. CPython 3.14 on
+        Intel macOS) ship without them. ``_get_converter`` uses this to disable
+        features whose models are missing and to pick a PDF backend that does
+        not need to compile, so parsing degrades gracefully instead of raising
+        at convert time.
+
+        Returns a dict with keys ``tableformer``, ``easyocr`` and
+        ``docling_parse``, each True when that component can be imported.
+        """
+        import importlib.util as ilu
+
+        return {
+            "tableformer": ilu.find_spec("docling_ibm_models") is not None,
+            "easyocr": ilu.find_spec("easyocr") is not None,
+            "docling_parse": ilu.find_spec("docling_parse") is not None,
+        }
+
     def _get_converter(self, **kwargs) -> Any:
         """
         Lazily build and cache a `DocumentConverter` configured from kwargs.
@@ -2653,6 +2679,25 @@ class DoclingParser(Parser):
         do_tables = bool(kwargs.get("tables", True))
         do_ocr = bool(kwargs.get("allow_ocr", True))
         artifacts_path = kwargs.get("artifacts_path")
+
+        # docling-slim (the only Docling build that resolves on some platforms,
+        # e.g. CPython 3.14 on Intel macOS) ships without the torch-backed ML
+        # models. Loading TableFormer or EasyOCR would then fail at convert
+        # time, so disable those features when their models are absent; text
+        # extraction still works through the PDF backend selected below.
+        availability = self._docling_model_availability()
+        if do_tables and not availability["tableformer"]:
+            self.logger.warning(
+                "DoclingParser: table-structure models (docling-ibm-models) "
+                "are not installed; disabling table recognition for this run."
+            )
+            do_tables = False
+        if do_ocr and not availability["easyocr"]:
+            self.logger.warning(
+                "DoclingParser: OCR models (easyocr) are not installed; "
+                "disabling OCR for this run."
+            )
+            do_ocr = False
 
         cache_key = (table_mode, do_tables, do_ocr, artifacts_path)
         # Fast path: snapshot read outside the lock (dict reads are atomic in
@@ -2687,6 +2732,26 @@ class DoclingParser(Parser):
         if hasattr(pipeline_options, "images_scale"):
             pipeline_options.images_scale = 2.0
 
+        # Choose the PDF backend. Docling defaults to docling-parse, which ships
+        # only as an sdist on some platforms (e.g. CPython 3.14 on Intel macOS)
+        # and cannot compile there. When it is not importable, fall back to the
+        # pypdfium2 backend, which installs as a pure wheel everywhere.
+        pdf_option_kwargs = {"pipeline_options": pipeline_options}
+        if not availability["docling_parse"]:
+            try:
+                from docling.backend.pypdfium2_backend import (
+                    PyPdfiumDocumentBackend,
+                )
+
+                pdf_option_kwargs["backend"] = PyPdfiumDocumentBackend
+                self.logger.info(
+                    "DoclingParser: docling-parse not available; using the "
+                    "pypdfium2 PDF backend."
+                )
+            except ImportError:
+                # Let Docling surface its own install hint at convert time.
+                pass
+
         # Slow path: serialize converter construction so that concurrent
         # first-use against the same cache_key doesn't load Docling's models
         # twice. We re-check the cache under the lock to avoid a double build
@@ -2697,7 +2762,7 @@ class DoclingParser(Parser):
                 return cached
             converter = DocumentConverter(
                 format_options={
-                    InputFormat.PDF: PdfFormatOption(pipeline_options=pipeline_options),
+                    InputFormat.PDF: PdfFormatOption(**pdf_option_kwargs),
                 }
             )
             self._converter_cache[cache_key] = converter
@@ -2758,7 +2823,7 @@ class DoclingParser(Parser):
         except ImportError as e:
             raise RuntimeError(
                 "Docling Python API is not available. Install it with: "
-                "pip install docling"
+                "pip install 'raganything[docling]'"
             ) from e
 
         try:
@@ -3118,7 +3183,7 @@ class DoclingParser(Parser):
         except ImportError:
             self.logger.debug(
                 "Docling Python package is not installed. "
-                "Install it with: pip install docling"
+                "Install it with: pip install 'raganything[docling]'"
             )
             return False
 

@@ -1,6 +1,7 @@
 include requirements.txt
 include README.md
 include README_zh.md
+include CHANGELOG.md
 include LICENSE
 recursive-include raganything *.py
 recursive-include examples *.py

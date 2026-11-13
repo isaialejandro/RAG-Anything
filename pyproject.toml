@@ -37,8 +37,21 @@ dependencies = [
 image = ["Pillow>=10.0.0"]
 text = ["reportlab>=4.0.0"]
 office = []  # Requires LibreOffice (external program)
+# MinerU is unavailable on Python 3.14, so Docling is the only parser there,
+# yet nothing declared how to install it. These markers close that gap.
+# docling-slim exposes the same DocumentConverter/PdfFormatOption API that
+# raganything/parser.py imports; the full distribution adds docling-ibm-models
+# (TableFormer layout models), which pulls torch. PyTorch ships no macOS
+# x86_64 wheel after 2.2.2 and none at all for cp314 on that platform, so an
+# Intel Mac can only resolve the slim build.
+docling = [
+    "docling-slim>=2.150.0; sys_platform == 'darwin' and platform_machine == 'x86_64'",
+    "docling>=2.0.0; sys_platform == 'darwin' and platform_machine == 'arm64'",
+    "docling>=2.0.0; sys_platform != 'darwin'",
+]
+# paddlepaddle, which paddleocr requires, publishes no cp314 wheel.
 paddleocr = [
-    "paddleocr>=2.7.0",
+    "paddleocr>=2.7.0; python_version < '3.14'",
     "pypdfium2>=4.25.0",
 ]
 markdown = [
@@ -59,7 +72,7 @@ video = [
 all = [
     "Pillow>=10.0.0",
     "reportlab>=4.0.0",
-    "paddleocr>=2.7.0",
+    "paddleocr>=2.7.0; python_version < '3.14'",  # paddlepaddle has no cp314 wheel
     "pypdfium2>=4.25.0",
     "markdown>=3.4.0",
     "weasyprint>=60.0",
@@ -69,6 +82,11 @@ all = [
     "scenedetect[opencv]>=0.6.0",
     "moviepy>=2.0.0",
     "opencv-python>=4.8.0",
+    # Without these, `[all]` on Python 3.14 leaves no usable parser at all,
+    # because the MinerU dependency is skipped there. See the `docling` extra.
+    "docling-slim>=2.150.0; sys_platform == 'darwin' and platform_machine == 'x86_64'",
+    "docling>=2.0.0; sys_platform == 'darwin' and platform_machine == 'arm64'",
+    "docling>=2.0.0; sys_platform != 'darwin'",
 ]
 
 [project.urls]

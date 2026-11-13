@@ -681,7 +681,7 @@ class BatchParser:
             BatchProcessingResult with processing statistics
         """
         # Run the sync version in a thread pool
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         process_func = partial(
             self.process_batch,
             file_paths=file_paths,
