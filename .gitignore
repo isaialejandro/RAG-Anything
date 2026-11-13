@@ -51,6 +51,8 @@ rag_storage*/
 examples/input/
 examples/output/
 output*/
+# Docker bind-mount for input documents (see docker-compose.yml)
+data/
 
 # Miscellaneous
 .DS_Store
