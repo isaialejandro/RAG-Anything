@@ -32,6 +32,11 @@ the Mac**. An Intel Mac runs this image natively (no emulation).
   injects it at runtime via `env_file`. Rotate any key that has been shared in
   chat or logs.
 
+  `EMBEDDING_BINDING_HOST` is reached from inside the container: for a remote
+  Ollama on the LAN use its address (e.g. `http://10.0.0.111:11434`); if Ollama
+  runs on the Mac host instead, use `http://host.docker.internal:11434`, not
+  `localhost` (which would point at the container itself).
+
 ## Build
 
 ```bash
