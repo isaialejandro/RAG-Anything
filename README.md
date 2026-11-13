@@ -241,7 +241,9 @@ The hybrid retrieval system combines vector similarity search with graph travers
 
 > **Python version:** RAG-Anything supports Python 3.10 and later, but its default MinerU parser needs MinerU 3.x, which supports Python 3.10 to 3.13 only. On Python 3.14, RAG-Anything is installed without MinerU: use the Docling parser there (`pip install 'raganything[docling]'`, then `RAGAnythingConfig(parser="docling")`), or create the environment with Python 3.13 to use MinerU.
 >
-> **Intel macOS:** prefer `raganything[docling]` over a bare `pip install docling`. The full Docling distribution depends on `docling-ibm-models`, which requires PyTorch, and PyTorch publishes no macOS x86_64 wheel after 2.2.2 — so a bare install cannot resolve there on any Python version. The extra selects `docling-slim` on that platform, which exposes the same `DocumentConverter` API without the TableFormer layout models (expect lower fidelity on complex tables).
+> **Intel macOS:** prefer `raganything[docling]` over a bare `pip install docling`. The full Docling distribution depends on `docling-ibm-models`, which requires PyTorch, and PyTorch publishes no macOS x86_64 wheel after 2.2.2 — so a bare install cannot resolve there on any Python version. The extra selects `docling-slim` on that platform, which exposes the same `DocumentConverter` API without the torch-backed models.
+>
+> On Intel macOS, `docling-slim` parses **Office, Markdown and HTML**, but **not PDFs or images** — Docling's PDF pipeline always loads a torch-based layout model, which cannot run without PyTorch. To process PDFs on this hardware, run the Docker image, which gets PyTorch on `linux/amd64` while leaving the Mac untouched. See [docs/docker.md](docs/docker.md).
 
 #### Option 1: Install from PyPI (Recommended)
 

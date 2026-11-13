@@ -28,7 +28,20 @@ environment respects the constraints the project already declares.
 - `docling` extra that installs the Docling parser, selecting `docling-slim` on Intel
   macOS (where the full distribution cannot resolve) and `docling` on every other
   platform. `docling-slim` exposes the same `DocumentConverter` and `PdfFormatOption`
-  API that `raganything/parser.py` imports, without the TableFormer layout models.
+  API that `raganything/parser.py` imports, without the torch-backed ML models. It
+  parses Office, Markdown and HTML on 3.14 Intel macOS, but **not** PDFs or images —
+  Docling's PDF pipeline always runs a torch-based layout model (see Docker, below).
+- **Docker image** (`Dockerfile`, `docker-compose.yml`) running the full, torch-backed
+  Docling parser on `linux/amd64` with the same CPython 3.14 the Intel-mac host runs.
+  PyTorch publishes cp314 wheels for Linux x86_64 (none for macOS x86_64), so PDF layout,
+  tables and images work in the container while nothing is installed on the Mac. The
+  container reads `ANTHROPIC_API_KEY` and the `EMBEDDING_*` block from the host `.env` at
+  runtime and talks to the same remote Ollama host.
+- Automatic PDF-backend fallback in `DoclingParser`: when `docling-parse` (the default
+  backend, an sdist that cannot compile on some platforms) is unavailable, it uses the
+  pure-wheel `pypdfium2` backend instead. Table-structure and OCR are also disabled
+  automatically when their ML models (`docling-ibm-models`, `easyocr`) are absent, so a
+  slim install degrades to text extraction instead of crashing at convert time.
 - Python 3.13 and 3.14 in the CI test matrix.
 - CI step asserting that the `[all]` extra leaves an importable parser, so the gap fixed
   below cannot silently return.
@@ -54,6 +67,14 @@ environment respects the constraints the project already declares.
 - `tests/test_enhanced_markdown_css.py` failed when the optional `markdown` dependency
   was absent, even though the test supplies its own fake module. It no longer requires
   the real package to be importable.
+- `examples/raganything_claude.py` could not run end to end against Claude. Three
+  issues, each surfaced by a real document run and fixed: (1) `max_tokens` was never
+  passed, so the Anthropic SDK rejected every call with "Missing required arguments";
+  (2) LightRAG's `anthropic_complete_if_cache` only streams (returns an async
+  generator) while entity extraction expects a string — the example now calls the SDK
+  directly; (3) a non-streaming call with a large `max_tokens` is refused by the SDK
+  ("Streaming is required for operations that may take longer than 10 minutes"), so the
+  text path now streams and collects the result into a string.
 
 ### Changed
 
@@ -64,9 +85,15 @@ environment respects the constraints the project already declares.
 
 ### Known limitations
 
-- **Intel macOS has no TableFormer.** `docling-slim` omits the ML layout models, so
-  complex tables (merged cells, multi-level headers, borderless) parse with lower
-  fidelity. Text PDFs, Office formats, Markdown, HTML and images are unaffected.
+- **PDF and image parsing do not work on Intel macOS.** Docling's PDF pipeline always
+  loads a torch-based layout model, and PyTorch publishes no macOS x86_64 wheel (the last
+  was 2.2.2, cp38–cp312; none for cp314). `docling-slim` installs and parses Office,
+  Markdown and HTML on the host, but any PDF or image raises at convert time. Run the
+  Docker image for PDFs on this hardware — it gets torch on `linux/amd64`. (An earlier
+  version of this file wrongly claimed text PDFs were unaffected; they are not.)
+- **No TableFormer without torch.** Even where text extraction works, complex tables
+  (merged cells, multi-level headers, borderless) need the TableFormer models, which
+  require torch. They are available in the Docker image, not on a torch-less host.
 - **MinerU and PaddleOCR are unavailable on Python 3.14**, by upstream constraint and
   missing cp314 wheels respectively. Use Python 3.13 or earlier if either is required.
 - `lightrag-hku<1.5` is a permanent upstream constraint, not a temporary pin: RAG-Anything
